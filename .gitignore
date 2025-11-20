@@ -26,3 +26,8 @@ Thumbs.db
 *.log
 *.pyc
 
+# Environment files
+.envrc
+.env
+.env.local
+
