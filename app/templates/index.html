@@ -179,6 +179,50 @@
         .loading.show {
             display: block;
         }
+        
+        .examples-container {
+            margin-bottom: 12px;
+        }
+        
+        .examples-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .examples-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .example-btn {
+            padding: 6px 12px;
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: auto;
+            flex: 0 0 auto;
+        }
+        
+        .example-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .example-btn:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -192,6 +236,16 @@
             
             <div class="form-group">
                 <label for="operation">Operation <span style="color: #e74c3c;">*</span>:</label>
+                <div class="examples-container">
+                    <div class="examples-label">Quick examples:</div>
+                    <div class="examples-buttons">
+                        <button type="button" class="example-btn" data-prompt="<|grounding|>OCR this image.">OCR with Layout</button>
+                        <button type="button" class="example-btn" data-prompt="<|grounding|>Convert the document to markdown.">To Markdown</button>
+                        <button type="button" class="example-btn" data-prompt="Free OCR.">Free OCR</button>
+                        <button type="button" class="example-btn" data-prompt="Describe this image in detail.">Describe Image</button>
+                        <button type="button" class="example-btn" data-prompt="Parse the figure.">Parse Figure</button>
+                    </div>
+                </div>
                 <textarea 
                     id="operation" 
                     name="operation" 
@@ -229,6 +283,17 @@
         const resultText = document.getElementById('resultText');
         const imageContainer = document.getElementById('imageContainer');
         const resultImage = document.getElementById('resultImage');
+        const operationTextarea = document.getElementById('operation');
+        
+        // Add click handlers for example buttons
+        document.querySelectorAll('.example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const prompt = btn.getAttribute('data-prompt');
+                operationTextarea.value = prompt;
+                operationTextarea.focus();
+            });
+        });
+        
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             

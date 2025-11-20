@@ -61,14 +61,72 @@ The application will be available at `http://localhost:8000`
 1. Open the web interface in your browser at `http://localhost:8000`
 2. Upload an image file
 3. Enter a natural language operation in the textarea (required). Examples:
-   - "Extract all text from this image"
-   - "Identify all objects in this image"
-   - "Translate all text to English"
-   - "Extract only numbers"
+   - `<|grounding|>OCR this image.` - General OCR with layout preservation
+   - `<|grounding|>Convert the document to markdown.` - Convert to Markdown format
+   - `Free OCR.` - Extract text without layout
+   - `Describe this image in detail.` - Get detailed image description
+   - `Parse the figure.` - Analyze figures and diagrams
+   
+   For more prompt examples and advanced usage, see the [DeepSeek-OCR Prompts](#deepseek-ocr-prompts) section below.
 4. Click "Process OCR" to process the image
 5. View the results:
    - **Text result**: The OCR text output (may include detection tags)
    - **Annotated image**: If detections are found, the image will be displayed with bounding boxes and labels drawn on it
+
+For a comprehensive list of available prompts, see the [DeepSeek-OCR Prompts](#deepseek-ocr-prompts) section below.
+
+## DeepSeek-OCR Prompts
+
+DeepSeek-OCR supports various prompt patterns for different OCR tasks. The following prompts are commonly used and officially supported:
+
+### Common Prompts
+
+- **Document to Markdown Conversion**: Converts the document into a structured Markdown format.
+  ```
+  <|grounding|>Convert the document to markdown.
+  ```
+
+- **General OCR with Layout Preservation**: Performs OCR while maintaining the document's layout and structure.
+  ```
+  <|grounding|>OCR this image.
+  ```
+
+- **Free OCR (Text Extraction without Layout)**: Extracts text without preserving the original layout information.
+  ```
+  Free OCR.
+  ```
+
+- **Figure Parsing**: Analyzes and extracts information from figures, charts, or diagrams within the document.
+  ```
+  Parse the figure.
+  ```
+
+- **Detailed Image Description**: Provides a comprehensive description of the image content.
+  ```
+  Describe this image in detail.
+  ```
+
+- **Text Localization**: Locates and identifies specific text within the image, returning bounding box coordinates.
+  ```
+  Locate <|ref|>specific text<|/ref|> in the image.
+  ```
+
+### Special Tokens
+
+DeepSeek-OCR uses special tokens to control behavior and output format:
+
+- **`<|grounding|>`**: Enables the model to generate outputs with spatial information, such as bounding boxes. Use this token when you need object detection and localization capabilities. The model will return detection tags (`<|det|>`) with coordinate information.
+
+- **`<|ref|>...<|/ref|>`**: Marks specific text spans for localization tasks. Use these tags to locate particular text within an image. The text between these tags will be searched for and its location returned with bounding box coordinates.
+
+- **`<image>`**: This token is automatically handled by the application and langchain-ollama integration. You don't need to include it in your prompts.
+
+### Prompt Tips
+
+- Use `<|grounding|>` prefix when you need bounding box information for detected objects
+- For simple text extraction without layout, use "Free OCR." without the grounding token
+- Text localization prompts require the `<|ref|>...<|/ref|>` tags around the text you want to find
+- You can combine natural language instructions with these special tokens for more specific tasks
 
 ## Detection Format
 
