@@ -15,6 +15,7 @@ class OCRService:
         self.llm = ChatOllama(
             model=self.model_name,
             base_url=self.base_url,
+            num_ctx=8000,
         )
 
     def _image_to_base64(self, image: Image.Image) -> str:
