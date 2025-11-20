@@ -1,13 +1,21 @@
 # DeepSeek OCR Web Application
 
-A FastAPI web application with a simple HTML UI for performing OCR on images using deepseek-ocr via langchain-ollama.
+A FastAPI web application with a simple HTML UI for performing OCR on images using deepseek-ocr via langchain-ollama. The application can detect objects in images and draw bounding boxes with labels.
 
 ## Features
 
 - Upload image files for OCR processing
-- Apply natural language operations to OCR results
+- Apply natural language operations to OCR results (required)
+- Automatic detection of objects with bounding boxes and labels
+- Visual annotation of detected objects on the image
 - Simple, clean web interface
 - Connects to deepseek-ocr model via Ollama
+
+## Requirements
+
+- Python 3.13 or higher
+- Ollama server with deepseek-ocr model installed
+- `uv` package manager (recommended) or pip
 
 ## Setup
 
@@ -16,8 +24,18 @@ A FastAPI web application with a simple HTML UI for performing OCR on images usi
    uv sync
    ```
 
+   Or using pip:
+   ```bash
+   pip install -e .
+   ```
+
 2. Configure environment variables in `.envrc`:
    - `OLLAMA_BASE_URL`: URL of your Ollama server (e.g., `http://localhost:11434`)
+
+   Example `.envrc`:
+   ```bash
+   export OLLAMA_BASE_URL=http://localhost:11434
+   ```
 
 3. Ensure deepseek-ocr model is available on your Ollama server:
    ```bash
@@ -31,24 +49,56 @@ Start the FastAPI server:
 uv run uvicorn app.main:app --reload
 ```
 
+Or with pip:
+```bash
+uvicorn app.main:app --reload
+```
+
 The application will be available at `http://localhost:8000`
 
 ## Usage
 
-1. Open the web interface in your browser
+1. Open the web interface in your browser at `http://localhost:8000`
 2. Upload an image file
-3. (Optional) Enter a natural language operation in the textarea (e.g., "Translate to English", "Extract only numbers", "Summarize the text")
-4. Click "Process OCR" to extract text and apply the operation
-5. View the result in the result area
+3. Enter a natural language operation in the textarea (required). Examples:
+   - "Extract all text from this image"
+   - "Identify all objects in this image"
+   - "Translate all text to English"
+   - "Extract only numbers"
+4. Click "Process OCR" to process the image
+5. View the results:
+   - **Text result**: The OCR text output (may include detection tags)
+   - **Annotated image**: If detections are found, the image will be displayed with bounding boxes and labels drawn on it
+
+## Detection Format
+
+When the OCR model detects objects, it returns them in the following format:
+- `<|ref|>ObjectName<|/ref|><|det|>[[x1, y1, x2, y2], ...]<|/det|>`
+- Coordinates are normalized to a 1000x1000 grid (0-999)
+- Multiple objects of the same type can be detected
+- The application automatically scales coordinates to match the actual image size
 
 ## API Endpoints
 
-- `GET /`: Serves the HTML web interface
-- `POST /api/ocr`: Processes an image file with OCR
-  - Form data:
-    - `file`: Image file (required)
-    - `operation`: Natural language operation (optional)
-  - Returns: Plain text result
+### `GET /`
+Serves the HTML web interface.
+
+### `POST /api/ocr`
+Processes an image file with OCR and optional object detection.
+
+**Form data:**
+- `file`: Image file (required)
+- `operation`: Natural language operation to perform (required)
+
+**Returns:** JSON response with:
+```json
+{
+  "text": "OCR result text with detection tags",
+  "annotated_image": "data:image/png;base64,..." // null if no detections
+}
+```
+
+The `annotated_image` field contains a base64-encoded PNG image with bounding boxes and labels drawn on it, if detections were found in the OCR response.
 
 ## Project Structure
 
@@ -56,14 +106,32 @@ The application will be available at `http://localhost:8000`
 deepseek-ocr/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py              # FastAPI application
+│   ├── main.py              # FastAPI application and endpoints
 │   ├── services/
 │   │   ├── __init__.py
 │   │   └── ocr_service.py   # OCR service using langchain-ollama
+│   │                          # Handles OCR, detection parsing, and image annotation
 │   └── templates/
-│       └── index.html       # Web UI
-├── pyproject.toml
-├── .envrc                   # Environment variables
+│       └── index.html       # Web UI with image upload and result display
+├── pyproject.toml           # Project dependencies and build configuration
+├── .gitignore               # Git ignore patterns
+├── .envrc                   # Environment variables (not in git)
 └── README.md
 ```
+
+## How It Works
+
+1. **Image Upload**: User uploads an image through the web interface
+2. **OCR Processing**: The image is sent to deepseek-ocr model via langchain-ollama with the user's operation
+3. **Detection Parsing**: If the response contains detection tags (`<|det|>`), they are parsed to extract bounding box coordinates
+4. **Image Annotation**: Bounding boxes and labels are drawn on the image using PIL (Pillow)
+5. **Response**: Both the text result and annotated image (if detections found) are returned to the frontend
+6. **Display**: The frontend displays the text result and shows the annotated image with bounding boxes
+
+## Notes
+
+- Detection coordinates are normalized to a 1000x1000 grid and automatically scaled to the actual image dimensions
+- The operation parameter is required and should be a natural language instruction for what to do with the image
+- The application supports multiple detections per object type
+- Each object type gets a unique color for its bounding boxes and labels
 
