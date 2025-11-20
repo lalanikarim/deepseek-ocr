@@ -1,7 +1,8 @@
 import os
+import base64
 from io import BytesIO
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from dotenv import load_dotenv
@@ -32,7 +33,7 @@ async def read_root():
         return HTMLResponse(content=f.read())
 
 
-@app.post("/api/ocr", response_class=PlainTextResponse)
+@app.post("/api/ocr")
 async def process_ocr(
     file: UploadFile = File(...),
     operation: str = Form(...)
@@ -45,7 +46,7 @@ async def process_ocr(
         operation: Natural language operation to perform (required)
     
     Returns:
-        Plain text result
+        JSON with text result and annotated image (if detections found)
     """
     try:
         # Validate file type
@@ -60,10 +61,27 @@ async def process_ocr(
         image_data = await file.read()
         image = Image.open(BytesIO(image_data))
         
-        # Perform OCR with operation
-        result = await ocr_service.perform_ocr(image, operation.strip())
+        # Ensure image is loaded and get its size
+        image.load()  # Force image to load fully
+        print(f"[DEBUG] Original image size: {image.size}, mode: {image.mode}")
         
-        return PlainTextResponse(content=result)
+        # Perform OCR with operation and get annotated image
+        result, annotated_image = await ocr_service.perform_ocr_with_annotations(image, operation.strip())
+        
+        # Prepare response
+        response_data = {
+            "text": result,
+            "annotated_image": None
+        }
+        
+        # Convert annotated image to base64 if available
+        if annotated_image:
+            buffered = BytesIO()
+            annotated_image.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            response_data["annotated_image"] = f"data:image/png;base64,{img_str}"
+        
+        return JSONResponse(content=response_data)
     
     except HTTPException:
         raise

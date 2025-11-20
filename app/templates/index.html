@@ -154,14 +154,6 @@
             object-fit: contain;
         }
         
-        #imageCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-            width: auto;
-            height: auto;
-        }
         
         .error {
             color: #e74c3c;
@@ -219,7 +211,6 @@
             <div class="result-label">Image with Detections:</div>
             <div class="image-wrapper">
                 <img id="resultImage" alt="Processed image">
-                <canvas id="imageCanvas"></canvas>
             </div>
         </div>
         
@@ -238,189 +229,6 @@
         const resultText = document.getElementById('resultText');
         const imageContainer = document.getElementById('imageContainer');
         const resultImage = document.getElementById('resultImage');
-        const imageCanvas = document.getElementById('imageCanvas');
-        const imageFileInput = document.getElementById('imageFile');
-        
-        let currentImageFile = null;
-        
-        // Store the uploaded image file
-        imageFileInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files[0]) {
-                currentImageFile = e.target.files[0];
-            }
-        });
-        
-        function parseDetections(text) {
-            console.log('[DEBUG] parseDetections - Input text:', text);
-            console.log('[DEBUG] parseDetections - Text length:', text.length);
-            
-            const detections = [];
-            
-            // Match ref and det pairs: <|ref|>name<|/ref|><|det|>[[coords]]<|/det|>
-            // This regex matches the entire pattern including multiple boxes in one det tag
-            const refDetRegex = /<\|ref\|>(.*?)<\|\\?\/ref\|><\|det\|>\[(.*?)\]<\|\\?\/det\|>/gs;
-            let match;
-            let matchCount = 0;
-            
-            console.log('[DEBUG] parseDetections - Testing ref/det regex pattern');
-            
-            while ((match = refDetRegex.exec(text)) !== null) {
-                matchCount++;
-                const objectName = match[1].trim();
-                const coordsString = match[2].trim();
-                
-                console.log(`[DEBUG] parseDetections - Match ${matchCount}:`);
-                console.log(`[DEBUG] parseDetections - Object name: "${objectName}"`);
-                console.log(`[DEBUG] parseDetections - Coordinates string: "${coordsString}"`);
-                
-                // Parse all bounding boxes from the coordinates string
-                // Format: [x1, y1, x2, y2], [x1, y1, x2, y2], ...
-                const boxRegex = /\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]/g;
-                let boxMatch;
-                let boxCount = 0;
-                
-                while ((boxMatch = boxRegex.exec(coordsString)) !== null) {
-                    boxCount++;
-                    const box = {
-                        name: objectName,
-                        x1: parseInt(boxMatch[1]),
-                        y1: parseInt(boxMatch[2]),
-                        x2: parseInt(boxMatch[3]),
-                        y2: parseInt(boxMatch[4])
-                    };
-                    
-                    console.log(`[DEBUG] parseDetections - Box ${boxCount} for "${objectName}":`, box);
-                    detections.push(box);
-                }
-                
-                console.log(`[DEBUG] parseDetections - Found ${boxCount} boxes for "${objectName}"`);
-            }
-            
-            console.log('[DEBUG] parseDetections - Total detections found:', detections.length);
-            console.log('[DEBUG] parseDetections - Detections array:', detections);
-            
-            return detections;
-        }
-        
-        function removeDetTags(text) {
-            console.log('[DEBUG] removeDetTags - Input text:', text);
-            const cleaned = text.replace(/<\|det\|>\[\[\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\]\]<\|\\?\/det\|>/g, '').trim();
-            console.log('[DEBUG] removeDetTags - Cleaned text:', cleaned);
-            return cleaned;
-        }
-        
-        function drawBoundingBoxes(detections) {
-            console.log('[DEBUG] drawBoundingBoxes - Called with detections:', detections);
-            console.log('[DEBUG] drawBoundingBoxes - Current image file:', currentImageFile);
-            
-            if (!currentImageFile) {
-                console.log('[DEBUG] drawBoundingBoxes - No image file, returning');
-                return;
-            }
-            
-            const img = new Image();
-            img.onload = () => {
-                console.log('[DEBUG] drawBoundingBoxes - Image loaded, dimensions:', img.width, 'x', img.height);
-                // Set image source
-                resultImage.src = img.src;
-                
-                // Calculate container width (accounting for padding)
-                const container = imageContainer.closest('.container');
-                const containerWidth = container ? container.offsetWidth - 80 : 520; // 40px padding on each side
-                console.log('[DEBUG] drawBoundingBoxes - Container width:', containerWidth);
-                
-                // Calculate display dimensions - scale to fit container if needed, maintaining aspect ratio
-                let displayWidth = img.width;
-                let displayHeight = img.height;
-                
-                if (displayWidth > containerWidth) {
-                    displayWidth = containerWidth;
-                    displayHeight = (img.height * containerWidth) / img.width;
-                }
-                
-                console.log('[DEBUG] drawBoundingBoxes - Display dimensions:', displayWidth, 'x', displayHeight);
-                
-                // Set image display size with max-width constraint
-                resultImage.style.width = displayWidth + 'px';
-                resultImage.style.height = displayHeight + 'px';
-                resultImage.style.maxWidth = containerWidth + 'px';
-                
-                // Set canvas size to match displayed image (internal resolution)
-                imageCanvas.width = displayWidth;
-                imageCanvas.height = displayHeight;
-                // Canvas CSS size should match image CSS size
-                imageCanvas.style.width = displayWidth + 'px';
-                imageCanvas.style.height = displayHeight + 'px';
-                
-                // Calculate scale factors based on display vs original dimensions
-                const scaleX = displayWidth / img.width;
-                const scaleY = displayHeight / img.height;
-                console.log('[DEBUG] drawBoundingBoxes - Scale factors: scaleX=', scaleX, 'scaleY=', scaleY);
-                
-                const ctx = imageCanvas.getContext('2d');
-                
-                // Generate colors for different object types
-                const colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#a8edea'];
-                const objectColors = {};
-                let colorIndex = 0;
-                
-                // Draw bounding boxes
-                console.log('[DEBUG] drawBoundingBoxes - Drawing', detections.length, 'boxes');
-                console.log('[DEBUG] drawBoundingBoxes - Scale factors: scaleX=', scaleX, 'scaleY=', scaleY);
-                
-                detections.forEach((det, index) => {
-                    const x = Math.min(det.x1, det.x2) * scaleX;
-                    const y = Math.min(det.y1, det.y2) * scaleY;
-                    const width = Math.abs(det.x2 - det.x1) * scaleX;
-                    const height = Math.abs(det.y2 - det.y1) * scaleY;
-                    
-                    // Get or assign color for this object type
-                    if (!objectColors[det.name]) {
-                        objectColors[det.name] = colors[colorIndex % colors.length];
-                        colorIndex++;
-                    }
-                    const boxColor = objectColors[det.name];
-                    
-                    console.log(`[DEBUG] drawBoundingBoxes - Box ${index + 1} (${det.name}):`, {
-                        original: { x1: det.x1, y1: det.y1, x2: det.x2, y2: det.y2 },
-                        scaled: { x, y, width, height },
-                        color: boxColor
-                    });
-                    
-                    // Draw rectangle
-                    ctx.strokeStyle = boxColor;
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(x, y, width, height);
-                    
-                    // Draw label background
-                    ctx.font = '12px sans-serif';
-                    const labelText = det.name;
-                    const textMetrics = ctx.measureText(labelText);
-                    const labelWidth = textMetrics.width + 8;
-                    const labelHeight = 18;
-                    
-                    // Draw label background
-                    ctx.fillStyle = boxColor;
-                    ctx.fillRect(x, y - labelHeight, labelWidth, labelHeight);
-                    
-                    // Draw label text
-                    ctx.fillStyle = 'white';
-                    ctx.textBaseline = 'top';
-                    ctx.fillText(labelText, x + 4, y - labelHeight + 2);
-                });
-                
-                console.log('[DEBUG] drawBoundingBoxes - Showing image container');
-                // Show image container
-                imageContainer.classList.add('show');
-            };
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(currentImageFile);
-        }
-        
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -430,10 +238,6 @@
             imageContainer.classList.remove('show');
             loading.classList.add('show');
             submitBtn.disabled = true;
-            
-            // Clear canvas
-            const ctx = imageCanvas.getContext('2d');
-            ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
             
             const formData = new FormData(form);
             
@@ -448,31 +252,28 @@
                     throw new Error(errorData || 'An error occurred');
                 }
                 
-                const result = await response.text();
-                console.log('[DEBUG] Form submit - Raw OCR result:', result);
-                console.log('[DEBUG] Form submit - Result type:', typeof result);
-                console.log('[DEBUG] Form submit - Result length:', result.length);
+                const data = await response.json();
+                console.log('[DEBUG] Form submit - Response data:', data);
                 
-                // Check if result contains det tags
-                const hasDetTags = /<\|det\|>/.test(result);
-                console.log('[DEBUG] Form submit - Contains <|det|> tags:', hasDetTags);
-                
-                // Parse detections
-                const detections = parseDetections(result);
-                console.log('[DEBUG] Form submit - Parsed detections:', detections);
-                
-                if (detections.length > 0) {
-                    console.log('[DEBUG] Form submit - Drawing bounding boxes for', detections.length, 'detections');
-                    // Draw bounding boxes on image
-                    drawBoundingBoxes(detections);
-                } else {
-                    console.log('[DEBUG] Form submit - No detections found, skipping box drawing');
-                }
-                
-                // Display text result (keeping det tags in the response)
-                console.log('[DEBUG] Form submit - Final text to display:', result);
-                resultText.textContent = result;
+                // Display text result
+                resultText.textContent = data.text;
                 resultContainer.classList.add('show');
+                
+                // Display annotated image if available
+                if (data.annotated_image) {
+                    resultImage.src = data.annotated_image;
+                    
+                    // Calculate container width (accounting for padding)
+                    const container = imageContainer.closest('.container');
+                    const containerWidth = container ? container.offsetWidth - 80 : 520; // 40px padding on each side
+                    
+                    // Set max-width to match container
+                    resultImage.style.maxWidth = containerWidth + 'px';
+                    resultImage.style.width = 'auto';
+                    resultImage.style.height = 'auto';
+                    
+                    imageContainer.classList.add('show');
+                }
                 
             } catch (err) {
                 error.textContent = `Error: ${err.message}`;
