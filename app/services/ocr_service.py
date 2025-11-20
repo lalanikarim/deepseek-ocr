@@ -50,24 +50,3 @@ class OCRService:
             return response.content.strip()
         except Exception as e:
             raise Exception(f"OCR failed: {str(e)}")
-
-    async def process_ocr_result(self, ocr_text: str, operation: str) -> str:
-        """Process OCR result with a natural language operation."""
-        try:
-            if not operation or not operation.strip():
-                return ocr_text
-            
-            prompt = f"""The following text was extracted from an image using OCR:
-
-{ocr_text}
-
-Please perform the following operation on this text: {operation}
-
-Return only the result of the operation, without any additional commentary or explanation."""
-            
-            message = HumanMessage(content=prompt)
-            response = await self.llm.ainvoke([message])
-            return response.content.strip()
-        except Exception as e:
-            raise Exception(f"Processing failed: {str(e)}")
-
